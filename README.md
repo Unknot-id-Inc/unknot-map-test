@@ -43,7 +43,7 @@ to display the Mohegan Sun location. Likewise, `moheganGoogle` will do the same 
 Maps. 
 
 > Currently the DFW flavor does not have a configuration to use Google Maps, as Google Map's support
-> for 3D GeoJSON rendering is rather more limited than MapBox.
+> for 3D GeoJSON rendering is rather more limited than Mapbox.
 
 ## Mock testing
 
