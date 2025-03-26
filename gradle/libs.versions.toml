@@ -1,7 +1,7 @@
 [versions]
 accompanistPermissions = "0.37.2"
-agp = "8.11.0-alpha01"
-androidSdk = "1.0.35"
+agp = "8.9.1"
+androidSdk = "1.0.36"
 datastorePreferences = "1.1.3"
 kotlin = "2.1.20"
 coreKtx = "1.15.0"

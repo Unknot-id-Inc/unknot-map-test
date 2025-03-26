@@ -74,7 +74,7 @@ class MainActivityViewModel(application: Application) : AndroidViewModel(applica
     val locationProvider = UnknotLocationProvider()
 
 
-    val ctx: Context
+    private val ctx: Context
         get() = getApplication<Application>().applicationContext
 
     init {
@@ -104,7 +104,7 @@ class MainActivityViewModel(application: Application) : AndroidViewModel(applica
         try {
             val restApi = UnknotRest(BuildConfig.AUTH_TARGET, BuildConfig.API_KEY)
             val deviceId = withContext(Dispatchers.IO) {
-                restApi.registerDevice(getApplication())
+                restApi.registerDevice(ctx)
             }
             ctx.dataStore.edit { prefs ->
                 prefs[DEVICE_ID_PREF] = deviceId
@@ -133,17 +133,23 @@ class MainActivityViewModel(application: Application) : AndroidViewModel(applica
         UnknotServiceController.startDataCollection(
             ctx = getApplication(),
             args = sdkArgs,
-            notification = notification.getNotification("Session running")
+            notification = notification.getNotification("Session running"),
+            forwardPredictions = true
         )
 
-        _uiState.value = MainUiState.Tracking.startFromReady(state)
+        //_uiState.value = MainUiState.Tracking.startFromReady(state)
     }
 
     fun stopSession() {
         val state = _uiState.value
         require(state is MainUiState.Tracking) { "UI must be in Tracking state to stop session" }
 
-        _uiState.value = MainUiState.Ready.stopFromTracking(state)
+        UnknotServiceController.stopDataCollection(
+            ctx = ctx,
+            notification = notification.getNotification("Session stopped")
+        )
+
+        //_uiState.value = MainUiState.Ready.stopFromTracking(state)
     }
 
     fun stopTestTracking() {
@@ -175,7 +181,7 @@ class MainActivityViewModel(application: Application) : AndroidViewModel(applica
             speed = 10,
             repeat = true,
             start = 5.minutes.inWholeMilliseconds,
-            end = 7.minutes.inWholeMilliseconds,
+            end = 15.minutes.inWholeMilliseconds,
             notification = notification.getNotification("Mock session running")
         )
 
@@ -195,19 +201,24 @@ class MainActivityViewModel(application: Application) : AndroidViewModel(applica
         else stopSession()
     }
 
-    override fun onUpdateServiceState(sstate: ServiceState) {
-        serviceState = sstate
-        val state = _uiState.value
-        when (sstate) {
+    override fun onUpdateServiceState(state: ServiceState) {
+        serviceState = state
+        val uiState = _uiState.value
+        when (state) {
             is ServiceState.Running ->
-                if (state is MainUiState.Tracking)
-                    _uiState.value = state.copy(sessionId = sstate.sessionId)
+                when (uiState) {
+                    is MainUiState.Tracking ->
+                        _uiState.value = uiState.copy(sessionId = state.sessionId)
+                    is MainUiState.Ready ->
+                        _uiState.value = MainUiState.Tracking.startFromReady(uiState)
+                    else -> {}
+                }
 
             is ServiceState.Error -> _uiState.value =
-                MainUiState.Error(sstate.message ?: "Unknown error", null)
+                MainUiState.Error(state.message ?: "Unknown error", null)
             ServiceState.Idle, ServiceState.Syncing, ServiceState.Unspecified ->
-                if (state is MainUiState.Tracking)
-                    _uiState.value = MainUiState.Ready.stopFromTracking(state)
+                if (uiState is MainUiState.Tracking)
+                    _uiState.value = MainUiState.Ready.stopFromTracking(uiState)
         }
     }
 
